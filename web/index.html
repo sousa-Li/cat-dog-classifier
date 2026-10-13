@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>猫狗图像分类识别 · ResNet18</title>
+<style>
+  :root{
+    --bg:#f6f5f2;
+    --card:#ffffff;
+    --line:#e6e3dd;
+    --ink:#1c1a17;
+    --ink-2:#6b665e;
+    --ink-3:#9c968c;
+    --accent:#c2570c;
+    --accent-soft:#fdf1e6;
+    --cat:#3f7d3a;
+    --dog:#b4791c;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif;
+    font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:40px 20px 64px}
+
+  header{text-align:center;margin-bottom:28px}
+  h1{font-size:24px;font-weight:600;margin:0 0 8px;letter-spacing:.5px}
+  header p{margin:0;color:var(--ink-2);font-size:13px}
+  .pill{display:inline-block;margin-top:12px;padding:3px 10px;border-radius:20px;
+    background:var(--accent-soft);color:var(--accent);font-size:12px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:20px;margin-bottom:16px}
+
+  #dropzone{
+    border:1.5px dashed #d5d0c7;border-radius:14px;background:var(--card);
+    padding:40px 20px;text-align:center;cursor:pointer;transition:.18s;
+    margin-bottom:16px;
+  }
+  #dropzone:hover{border-color:var(--accent);background:#fffdfa}
+  #dropzone.over{border-color:var(--accent);background:var(--accent-soft)}
+  #dropzone.busy{pointer-events:none;opacity:.65}
+  .dz-icon{width:44px;height:44px;margin:0 auto 12px;border:1.5px solid #d5d0c7;
+    border-radius:10px;position:relative}
+  .dz-icon::before{content:"";position:absolute;left:9px;top:9px;width:24px;height:18px;
+    border:1.5px solid #d5d0c7;border-radius:3px}
+  .dz-icon::after{content:"";position:absolute;left:22px;bottom:9px;width:0;height:0;
+    border-left:5px solid transparent;border-right:5px solid transparent;
+    border-bottom:7px solid #d5d0c7}
+  .dz-title{font-size:15px;font-weight:500;margin-bottom:4px}
+  .dz-sub{color:var(--ink-3);font-size:12.5px}
+
+  .samples-label{font-size:12.5px;color:var(--ink-2);margin:0 0 10px}
+  .samples{display:flex;gap:10px;flex-wrap:wrap}
+  .samples img{width:74px;height:74px;object-fit:cover;border-radius:9px;
+    border:1px solid var(--line);cursor:pointer;transition:.15s}
+  .samples img:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+  #panel{display:none}
+  #panel.show{display:block}
+  .result{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+  .preview{flex:0 0 190px}
+  .preview img{width:190px;height:190px;object-fit:cover;border-radius:10px;
+    border:1px solid var(--line);display:block}
+  .meta{flex:1;min-width:240px}
+  .verdict{font-size:13px;color:var(--ink-2);margin-bottom:2px}
+  .verdict-name{font-size:40px;font-weight:600;line-height:1.15;margin-bottom:2px}
+  .verdict-conf{font-size:13px;color:var(--ink-2);margin-bottom:18px}
+  .verdict-conf b{color:var(--ink);font-weight:600;font-size:15px}
+
+  .bar-row{margin-bottom:12px}
+  .bar-head{display:flex;justify-content:space-between;font-size:12.5px;
+    color:var(--ink-2);margin-bottom:5px}
+  .bar-head b{color:var(--ink);font-weight:600}
+  .bar-track{height:9px;background:#f0ede8;border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;width:0;transition:width .55s cubic-bezier(.3,.9,.4,1)}
+  .bar-cat{background:var(--cat)}
+  .bar-dog{background:var(--dog)}
+
+  .stat{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--ink-3);display:flex;gap:18px;flex-wrap:wrap}
+
+  .err{background:#fdf2f2;border:1px solid #f3d6d6;color:#a3352c;
+    border-radius:12px;padding:14px 16px;font-size:13px;margin-bottom:16px}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid #e2ddd5;
+    border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;
+    vertical-align:-2px;margin-right:7px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  footer{text-align:center;color:var(--ink-3);font-size:12px;margin-top:28px;line-height:1.9}
+  footer code{background:#eeebe5;padding:1px 5px;border-radius:4px;font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>猫狗图像分类识别</h1>
+    <p>上传一张照片，判断它是猫还是狗</p>
+    <span class="pill" id="statusPill">正在加载模型…</span>
+  </header>
+
+  <div class="err" id="errBox" style="display:none"></div>
+
+  <div id="dropzone">
+    <div class="dz-icon"></div>
+    <div class="dz-title">拖拽图片到这里，或点击选择</div>
+    <div class="dz-sub">支持 JPG / PNG，也可以直接 Ctrl+V 粘贴</div>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+  </div>
+
+  <div class="card">
+    <p class="samples-label">没有图片？点一张试试：</p>
+    <div class="samples" id="samples">
+      <img src="samples/cat_1.jpg"  alt="示例猫图 1" data-kind="cat">
+      <img src="samples/cat_2.jpg"  alt="示例猫图 2" data-kind="cat">
+      <img src="samples/dog_1.jpg"  alt="示例狗图 1" data-kind="dog">
+      <img src="samples/dog_2.jpg"  alt="示例狗图 2" data-kind="dog">
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="card">
+      <div class="result">
+        <div class="preview"><img id="previewImg" alt="待识别图片"></div>
+        <div class="meta">
+          <div class="verdict" id="verdictLabel">识别结果</div>
+          <div class="verdict-name" id="verdictName">—</div>
+          <div class="verdict-conf">置信度 <b id="verdictConf">—</b></div>
+
+          <div class="bar-row">
+            <div class="bar-head"><span>猫 cat</span><b id="pCat">—</b></div>
+            <div class="bar-track"><div class="bar-fill bar-cat" id="barCat"></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-head"><span>狗 dog</span><b id="pDog">—</b></div>
+            <div class="bar-track"><div class="bar-fill bar-dog" id="barDog"></div></div>
+          </div>
+
+          <div class="stat">
+            <span id="latency">推理耗时 —</span>
+            <span id="filename">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    ResNet18 · ImageNet 预训练迁移学习 · INT8 量化 ONNX 模型（10.8 MB）<br>
+    推理完全在<b>你的浏览器本地</b>完成，图片不会上传到任何服务器<br>
+    <code>验证集准确率 95%</code>　<code>独立测试集 20/20</code>
+  </footer>
+
+</div>
+
+<script src="ort/ort.wasm.min.js"></script>
+<script>
+(function () {
+  const MODEL_URL  = 'model/catdog_int8.onnx';
+  const CLASSES    = ['cat', 'dog'];
+  const CLASS_CN   = { cat: '猫', dog: '狗' };
+  const MEAN       = [0.485, 0.456, 0.406];
+  const STD        = [0.229, 0.224, 0.225];
+  const IMG_SIZE   = 224;
+
+  const $ = (id) => document.getElementById(id);
+  const dropzone = $('dropzone'), fileInput = $('fileInput');
+  const panel = $('panel'), errBox = $('errBox'), statusPill = $('statusPill');
+
+  let session = null;
+
+  function showError(msg) {
+    errBox.style.display = 'block';
+    errBox.innerHTML = msg;
+  }
+  function clearError() { errBox.style.display = 'none'; }
+
+  // ---------- 加载模型 ----------
+  (async function init() {
+    try {
+      if (typeof ort === 'undefined') throw new Error('onnxruntime-web 未加载（缺少 ort/ort.wasm.min.js）');
+      const t0 = performance.now();
+
+      // 必须用【绝对 URL】：ort.wasm.min.js 会把相对路径按"脚本所在目录"再解析一次，
+      // 而脚本本身就在 /ort/ 下，写 './ort/' 会被拼成 /ort/ort/... 直接 404。
+      ort.env.wasm.wasmPaths = new URL('ort/', location.href).href;
+      ort.env.wasm.numThreads = 1;          // 单线程，免去跨源隔离要求
+
+      // 自己把 wasm 二进制下载好再交给 ORT。
+      // 原因：部分静态托管（含本项目的线上托管）会把 .wasm 响应的 Content-Type 发成
+      // application/octet-stream，导致 WebAssembly.instantiateStreaming 失败，
+      // ORT 只能再下载一遍 11 MB 的 wasm 走 ArrayBuffer 兜底。
+      // 直接把二进制喂给它，既避开这个坑，也只下载一次。
+      statusPill.textContent = '正在下载推理引擎…';
+      const wasmUrl = new URL('ort/ort-wasm-simd-threaded.wasm', location.href).href;
+      const wasmResp = await fetch(wasmUrl);
+      if (!wasmResp.ok) throw new Error('推理引擎下载失败 HTTP ' + wasmResp.status);
+      ort.env.wasm.wasmBinary = await wasmResp.arrayBuffer();
+
+      statusPill.textContent = '正在加载模型…';
+      session = await ort.InferenceSession.create(MODEL_URL, { executionProviders: ['wasm'] });
+      const dt = ((performance.now() - t0) / 1000).toFixed(1);
+      statusPill.textContent = '模型已就绪 (' + dt + 's)';
+      console.log('[模型] 输入:', session.inputNames, '输出:', session.outputNames);
+    } catch (e) {
+      statusPill.textContent = '模型加载失败';
+      showError('<b>模型加载失败</b><br>' + e.message +
+        '<br><br>请确认是通过 HTTP 服务打开的页面（直接双击本地文件会被浏览器的安全策略拦截）。' +
+        '<br>在项目根目录执行：<code>python -m http.server 8000 --directory web</code>');
+    }
+  })();
+
+  // ---------- 预处理：Resize((224,224)) → 归一化（与 step5_test.py 完全一致）----------
+  function preprocess(img) {
+    const canvas = document.createElement('canvas');
+    canvas.width = IMG_SIZE;
+    canvas.height = IMG_SIZE;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';   // 缩小到 224 时质量更高，更接近训练端
+    // 训练与推理用的都是 transforms.Resize((224,224))，即直接拉伸到方图，
+    // 不是按短边缩放再中心裁剪 —— 这里必须保持一致，否则精度会掉。
+    ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
+
+    const px = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE).data;
+    const area = IMG_SIZE * IMG_SIZE;
+    const data = new Float32Array(3 * area);
+    for (let i = 0; i < area; i++) {
+      for (let c = 0; c < 3; c++) {
+        const v = px[i * 4 + c] / 255;
+        data[c * area + i] = (v - MEAN[c]) / STD[c];
+      }
+    }
+    return new ort.Tensor('float32', data, [1, 3, IMG_SIZE, IMG_SIZE]);
+  }
+
+  // ---------- 推理 ----------
+  async function run(fileOrUrl, displayName) {
+    clearError();
+    if (!session) { showError('模型还没加载完成，请稍等几秒。'); return; }
+
+    const url = typeof fileOrUrl === 'string' ? fileOrUrl : URL.createObjectURL(fileOrUrl);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = () => rej(new Error('图片解码失败，请换一张试试'));
+      img.src = url;
+    });
+
+    $('previewImg').src = url;
+    panel.classList.add('show');
+
+    try {
+      const t0 = performance.now();
+      const input = preprocess(img);
+      const out = await session.run({ [session.inputNames[0]]: input });
+      const probs = Array.from(out[session.outputNames[0]].data);
+      const ms = performance.now() - t0;
+
+      const best = probs[0] >= probs[1] ? 0 : 1;
+      $('verdictName').textContent = CLASS_CN[CLASSES[best]];
+      $('verdictConf').textContent = (probs[best] * 100).toFixed(2) + '%';
+      $('verdictLabel').textContent = probs[best] > 0.8 ? '识别结果' : '识别结果（置信度偏低，建议人工复核）';
+
+      $('pCat').textContent = (probs[0] * 100).toFixed(2) + '%';
+      $('pDog').textContent = (probs[1] * 100).toFixed(2) + '%';
+      $('barCat').style.width = (probs[0] * 100).toFixed(1) + '%';
+      $('barDog').style.width = (probs[1] * 100).toFixed(1) + '%';
+
+      $('latency').textContent = '推理耗时 ' + ms.toFixed(0) + ' ms';
+      $('filename').textContent = displayName || '';
+    } catch (e) {
+      showError('<b>推理失败</b><br>' + e.message);
+    } finally {
+      if (typeof fileOrUrl !== 'string') URL.revokeObjectURL(url);
+    }
+  }
+
+  // ---------- 交互 ----------
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) run(fileInput.files[0], fileInput.files[0].name);
+    fileInput.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(t => dropzone.addEventListener(t, e => {
+    e.preventDefault(); dropzone.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach(t => dropzone.addEventListener(t, e => {
+    e.preventDefault(); dropzone.classList.remove('over');
+  }));
+  dropzone.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) run(f, f.name);
+  });
+
+  window.addEventListener('paste', e => {
+    for (const item of e.clipboardData.items) {
+      if (item.type.startsWith('image/')) {
+        const f = item.getAsFile();
+        if (f) { run(f, '剪贴板图片'); break; }
+      }
+    }
+  });
+
+  $('samples').addEventListener('click', e => {
+    if (e.target.tagName === 'IMG') run(e.target.src, e.target.src.split('/').pop());
+  });
+
+  // 深链支持：在网址后加 #sample=cat_1.jpg 可打开即自动识别该示例，
+  // 方便把"已经出结果的页面"直接分享给别人
+  const deep = location.hash.match(/sample=([\w.\-]+)/);
+  if (deep) {
+    const target = document.querySelector('#samples img[src$="' + deep[1] + '"]');
+    if (target) {
+      const timer = setInterval(() => {
+        if (session) { clearInterval(timer); run(target.src, deep[1]); }
+      }, 200);
+      setTimeout(() => clearInterval(timer), 60000);
+    }
+  }
+})();
+</script>
+</body>
+</html>

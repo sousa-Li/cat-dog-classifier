@@ -1,0 +1,29 @@
+# ============================================================================
+# .gitattributes —— 统一换行符与文件类型
+# 避免 Windows / Linux 之间来回切换时出现"整文件都变了"的假改动
+# ============================================================================
+
+# 默认自动识别文本文件
+* text=auto
+
+# ---- 源码与文本：统一用 LF ----
+*.py      text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.html    text eol=lf
+*.json    text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# ---- 第三方压缩过的运行库：当二进制处理，绝不改动一个字节 ----
+web/ort/* binary
+
+# ---- 二进制文件：不做任何换行符转换 ----
+*.jpg     binary
+*.jpeg    binary
+*.png     binary
+*.webp    binary
+*.wasm    binary
+*.onnx    binary
+*.pth     binary
+*.zip     binary

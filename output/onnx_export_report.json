@@ -1,0 +1,24 @@
+{
+  "classes": [
+    "cat 猫",
+    "dog 狗"
+  ],
+  "img_size": 224,
+  "preprocess": "Resize((224,224)) -> ToTensor -> ImageNet Normalize",
+  "fp32": {
+    "size_mb": 42.63
+  },
+  "verification": {
+    "max_prob_diff": 3.5762786865234375e-07,
+    "mismatch": 0,
+    "num_images": 20
+  },
+  "int8": {
+    "size_mb": 10.78,
+    "accuracy": {
+      "torch": "19/20",
+      "fp32": "19/20",
+      "int8": "20/20"
+    }
+  }
+}

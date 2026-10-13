@@ -1,0 +1,35 @@
+# ============================================================================
+# .gitignore —— 猫狗分类实验项目
+# ============================================================================
+
+# ---- 模型权重（体积大，可用 step 脚本重新生成）----
+# best_model.pth / step*.pth / model_*.pth 合计约 97 MB，
+# 跑一遍 step1~step5 就能重新得到，不放进版本库。
+# 网页端需要的 ONNX 模型（web/model/catdog_int8.onnx，10.8 MB）会照常提交，
+# 所以 clone 下来直接就能跑网页版。
+models/*.pth
+
+# 空目录占位（Git 不跟踪空目录，用这个文件保住 models/ 目录）
+!models/.gitkeep
+
+# ---- 缓存与临时文件 ----
+.cache/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ---- 模型导出中间产物（FP32 版导出后会自动删除）----
+web/model/catdog_fp32.onnx
+
+# ---- IDE ----
+.idea/
+.vscode/
+*.iml
+
+# ---- 操作系统 ----
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ---- 日志 ----
+*.log

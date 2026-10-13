@@ -1,0 +1,77 @@
+{
+  "step1_从零训练AlexNet": {
+    "accuracy": 0.7,
+    "epochs": 30,
+    "lr": 0.0001,
+    "params_M": 46.8,
+    "pretrained": false,
+    "weight": "models/step1_alexnet_scratch.pth"
+  },
+  "step2_预训练AlexNet冻结卷积": {
+    "accuracy": 1.0,
+    "epochs": 30,
+    "lr": 0.0001,
+    "params_M": 57.0,
+    "trainable_M": 54.5,
+    "pretrained": true,
+    "frozen": "只训练 classifier",
+    "weight": "models/step2_alexnet_pretrained.pth"
+  },
+  "step4_官方模型横向对比": {
+    "epochs": 5,
+    "lr": 0.001,
+    "device": "cuda",
+    "models": {
+      "resnet18": {
+        "accuracy": 0.95,
+        "params_M": 11.18,
+        "train_sec": 1.8,
+        "sec_per_epoch": 0.37,
+        "infer_ms": 4.4
+      },
+      "mobilenet_v3_small": {
+        "accuracy": 0.85,
+        "params_M": 1.52,
+        "train_sec": 1.5,
+        "sec_per_epoch": 0.3,
+        "infer_ms": 8.0
+      },
+      "shufflenet_v2_x1_0": {
+        "accuracy": 0.85,
+        "params_M": 1.26,
+        "train_sec": 1.4,
+        "sec_per_epoch": 0.29,
+        "infer_ms": 10.2
+      }
+    }
+  },
+  "step3_预训练ResNet18加数据增强": {
+    "accuracy": 0.9,
+    "epochs": 5,
+    "lr": 0.001,
+    "params_M": 11.2,
+    "pretrained": true,
+    "frozen": "只训练 fc",
+    "augment": [
+      "RandomResizedCrop",
+      "RandomHorizontalFlip",
+      "ColorJitter",
+      "RandomRotation"
+    ],
+    "weight": "models/step3_resnet18_augment.pth"
+  },
+  "step5_保存最佳模型": {
+    "best_accuracy": 0.95,
+    "epochs": 5,
+    "lr": 0.001,
+    "val_acc_history": [
+      0.65,
+      0.75,
+      0.8,
+      0.95,
+      0.9
+    ],
+    "weight": "models/best_model.pth",
+    "note": "只保存参数（state_dict），加载时先建同结构模型再 load_state_dict"
+  }
+}

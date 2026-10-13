@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>自检</title></head>
+<body>
+<pre id="log">running...</pre>
+<script src="ort/ort.wasm.min.js"></script>
+<script>
+// 无人值守自检页：加载模型 → 对示例图片跑推理 → 把结果写进 DOM，
+// 供 headless 浏览器 --dump-dom 抓取，用来验证"浏览器端推理确实能跑通"。
+const IMG_SIZE = 224;
+const MEAN = [0.485, 0.456, 0.406];
+const STD  = [0.229, 0.224, 0.225];
+const out = [];
+function log(s) { out.push(s); document.getElementById('log').textContent = out.join('\n'); }
+
+function preprocess(img) {
+  const c = document.createElement('canvas');
+  c.width = IMG_SIZE; c.height = IMG_SIZE;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
+  const px = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE).data;
+  const area = IMG_SIZE * IMG_SIZE;
+  const data = new Float32Array(3 * area);
+  for (let i = 0; i < area; i++)
+    for (let ch = 0; ch < 3; ch++)
+      data[ch * area + i] = (px[i * 4 + ch] / 255 - MEAN[ch]) / STD[ch];
+  return new ort.Tensor('float32', data, [1, 3, IMG_SIZE, IMG_SIZE]);
+}
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error('图片加载失败: ' + src));
+    im.src = src;
+  });
+}
+
+(async () => {
+  try {
+    log('ort 版本: ' + (typeof ort !== 'undefined' ? ort.env.versions?.web || '(loaded)' : '未加载'));
+    // 必须是【绝对 URL】。ort.wasm.min.js 会把相对路径按"脚本所在目录"再解析一次，
+    // 脚本本身在 /ort/ 下，写 './ort/' 会被拼成 /ort/ort/... 直接 404。
+    ort.env.wasm.wasmPaths = new URL('ort/', location.href).href;
+    log('wasmPaths=' + ort.env.wasm.wasmPaths);
+    // 自己下载 wasm 再交给 ORT，绕开 .wasm 被发成 application/octet-stream 的问题
+    ort.env.wasm.wasmBinary =
+      await (await fetch(new URL('ort/ort-wasm-simd-threaded.wasm', location.href))).arrayBuffer();
+    ort.env.wasm.numThreads = 1;
+
+    const t0 = performance.now();
+    const session = await ort.InferenceSession.create('model/catdog_int8.onnx',
+                                                      { executionProviders: ['wasm'] });
+    log('SELFTEST_MODEL_LOADED=' + ((performance.now() - t0) / 1000).toFixed(2) + 's');
+    log('inputs=' + session.inputNames + ' outputs=' + session.outputNames);
+
+    for (const [src, truth] of [['samples/cat_1.jpg', 'cat'],
+                                ['samples/cat_2.jpg', 'cat'],
+                                ['samples/dog_1.jpg', 'dog'],
+                                ['samples/dog_2.jpg', 'dog']]) {
+      const img = await loadImage(src);
+      const t = performance.now();
+      const r = await session.run({ [session.inputNames[0]]: preprocess(img) });
+      const p = Array.from(r[session.outputNames[0]].data);
+      const pred = p[0] >= p[1] ? 'cat' : 'dog';
+      log(`SELFTEST_ITEM ${src} truth=${truth} pred=${pred} ` +
+          `cat=${(p[0] * 100).toFixed(2)}% dog=${(p[1] * 100).toFixed(2)}% ` +
+          `${(performance.now() - t).toFixed(0)}ms ${pred === truth ? 'OK' : 'FAIL'}`);
+    }
+    log('SELFTEST_DONE');
+  } catch (e) {
+    log('SELFTEST_ERROR ' + e.message);
+    log('STACK>>> ' + (e.stack || '').replace(/\n/g, ' | ').slice(0, 600));
+    log('WASMPATHS>>> ' + ort.env.wasm.wasmPaths);
+  }
+})();
+</script>
+</body>
+</html>

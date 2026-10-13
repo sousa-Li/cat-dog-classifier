@@ -1,0 +1,156 @@
+================================================================================
+              猫狗图像分类实验 —— 环境与依赖清单
+              生成时间：2026-10-13
+              项目路径：D:\workboddy\cat-dog-classifier
+================================================================================
+
+
+一、硬件环境
+--------------------------------------------------------------------------------
+项目              配置
+--------------------------------------------------------------------------------
+机型              笔记本电脑（AMD 平台）
+CPU               AMD64 Family 25 Model 68 Stepping 1（AuthenticAMD）
+GPU               NVIDIA GeForce RTX 4060 Laptop GPU（独立显卡，1 张）
+显存               8.0 GB（8188 MiB）
+计算能力          8.9（Ada Lovelace 架构，支持 TF32 / BF16）
+GPU 驱动版本       610.74
+驱动支持 CUDA     13.3（向下兼容 12.4 运行时）
+显存占用参考       训练与推理时显存峰值 < 2 GB，本实验对显存要求很低
+
+
+二、软件环境
+--------------------------------------------------------------------------------
+项目              版本 / 说明
+--------------------------------------------------------------------------------
+操作系统          Windows 11（内核版本 10.0.26200，64 位）
+系统架构          AMD64
+Python            3.13.12 (main, Feb 3 2026) [MSC v.1944 64-bit (AMD64)]
+Python 解释器路径  C:\Users\33432\.workbuddy\binaries\python\versions\3.13.12\python.exe
+虚拟环境路径       C:\Users\33432\.workbuddy\binaries\python\envs\default
+                  （激活脚本：envs\default\Scripts\activate.bat）
+包管理器          pip（随虚拟环境自带）
+
+
+三、深度学习框架与加速库
+--------------------------------------------------------------------------------
+项目                    版本
+--------------------------------------------------------------------------------
+PyTorch                 2.6.0+cu124
+torchvision             0.21.0+cu124
+CUDA 运行时（编译内置）  12.4
+cuDNN                   9.1.0（90100）
+GPU 加速可用性          torch.cuda.is_available() == True
+
+
+四、核心依赖库与用途
+--------------------------------------------------------------------------------
+库名                      版本            本项目中的作用
+--------------------------------------------------------------------------------
+torch                     2.6.0+cu124     深度学习框架。构建 AlexNet / ResNet18、
+                                          定义损失函数、Adam 优化器、GPU 张量运算
+torchvision               0.21.0+cu124    提供 ImageNet 预训练模型（AlexNet / ResNet18 /
+                                          MobileNetV3 / ShuffleNetV2）与图像变换
+                                          （Resize、随机裁剪、翻转、颜色抖动、归一化）
+onnx                      1.23.2          把 PyTorch 模型导出成 ONNX 格式；
+                                          同时对导出结果做结构校验（checker）
+onnxruntime               1.31.0          ONNX 模型推理与【INT8 静态量化】。
+                                          量化后模型从 42.6 MB 压到 10.8 MB，
+                                          供网页端加载
+gradio                    6.30.0          第六步：把模型封装成带摄像头拍照的网页小程序
+numpy                     2.5.2           数组运算、标签向量、ONNX 输入输出转换
+scikit-learn              1.9.1           准确率 / 精确率 / 召回率 / F1 指标计算；
+                                          分层划分与混淆矩阵
+matplotlib                3.11.2          生成实验对比图、独立测试集预测可视化
+pillow (PIL)              12.3.0          图片读取与解码、转 RGB、尺寸预处理
+tqdm                      4.70.1          预训练权重下载进度条
+protobuf / flatbuffers    7.36.2 /        onnx 的序列化依赖
+                          25.12.19
+ml_dtypes                 0.6.0           onnx 的数值类型依赖
+
+【其余约 60 个包】为 gradio 的传递依赖（fastapi / uvicorn / pydantic / httpx /
+numpy 生态等），pip 会自动安装，本项目未直接调用。
+完整清单见 requirements.txt（共 78 个包，已锁定精确版本）。
+
+
+五、前端运行库（网页版，不属于 Python 环境）
+--------------------------------------------------------------------------------
+名称                      版本            说明
+--------------------------------------------------------------------------------
+onnxruntime-web           1.20.1          WebAssembly 后端，在浏览器里跑 ONNX 模型。
+                                          运行库已下载到 web/ort/，不依赖 CDN。
+                                          · ort.wasm.min.js              48 KB
+                                          · ort-wasm-simd-threaded.mjs   25 KB
+                                          · ort-wasm-simd-threaded.wasm  11 MB
+
+模型文件：web/model/catdog_int8.onnx（10.8 MB，INT8 量化）
+托管方式：纯静态站点，已部署到云端沙箱，访问地址
+          https://714ce05a0b7c4764964f6fe747bececf.app.workbuddy.host
+
+
+六、环境安装与复现指令
+--------------------------------------------------------------------------------
+1) 创建虚拟环境
+
+   C:\Users\33432\.workbuddy\binaries\python\versions\3.13.12\python.exe -m venv ^
+       C:\Users\33432\.workbuddy\binaries\python\envs\default
+
+2) 安装 PyTorch（CUDA 12.4 版本，RTX 4060 适用）
+
+   pip install torch==2.6.0 torchvision==0.21.0 ^
+       --index-url https://download.pytorch.org/whl/cu124
+
+3) 安装其余依赖
+
+   pip install onnx onnxruntime gradio numpy scikit-learn matplotlib pillow tqdm
+
+4) 按清单精确对齐版本
+
+   pip install -r requirements.txt
+
+5) 验证 GPU 是否可用
+
+   python -c "import torch; print(torch.__version__, torch.cuda.is_available(),
+                                  torch.cuda.get_device_name(0))"
+
+   预期输出：2.6.0+cu124 True NVIDIA GeForce RTX 4060 Laptop GPU
+
+
+七、注意事项
+--------------------------------------------------------------------------------
+1. CUDA 版本匹配
+   torch 2.6.0+cu124 内置 CUDA 12.4 运行时，本机驱动（610.74，支持 CUDA 13.3）
+   向下兼容，无需单独安装 CUDA Toolkit 或 cuDNN，也不需要配置环境变量。
+
+2. 预训练权重缓存
+   首次运行时自动下载，缓存在
+   C:\Users\33432\.cache\torch\hub\checkpoints\
+     · resnet18-f37072fd.pth   （约 45 MB，第二/三/四/五步都用）
+     · alexnet-owt-7be5be79.pth（约 233 MB，第二步用）
+   离线环境下可提前把这两个文件拷进上述目录。
+
+3. 无 GPU 时的回退
+   所有脚本都会自动检测设备（torch.cuda.is_available()），无显卡时回退到 CPU，
+   代码无需修改，但训练耗时会增加数倍。
+
+4. matplotlib 中文字体
+   绘图脚本已设置 font.sans-serif = Microsoft YaHei / SimHei，避免中文显示成方块。
+   若在 Linux 或容器中运行，需先安装中文字体或改用英文标签。
+
+5. 随机种子
+   全部实验固定随机种子为 42（数据划分 / torch / numpy / random），
+   同一环境下可原样复现报告中的准确率。
+
+6. 跨平台说明
+   本清单为 Windows 环境实测版本。迁移到 Linux 时，PyTorch 与 torchvision 需
+   重新安装对应 CUDA 版本的 wheel，其余纯 Python 库版本可直接沿用。
+
+7. 网页版的额外要求
+   网页版是纯静态的，不依赖上述 Python 环境，但：
+   · 必须通过 HTTP 服务访问（不能用 file:// 直接打开），见 serve_web.py
+   · 浏览器需支持 WebAssembly（现代浏览器均支持）
+   · 首次加载需下载约 22 MB（模型 10.8 MB + 推理引擎 11 MB），之后走浏览器缓存
+
+================================================================================
+                              —— 清单结束 ——
+================================================================================
