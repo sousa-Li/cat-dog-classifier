@@ -82,8 +82,6 @@ cat-dog-classifier/
 │   └── onnx_export_report.json  # ONNX 导出与量化精度报告
 │
 ├── docs/                        # 实验指导书
-├── 运行步骤.txt                  # 详细运行步骤与排错
-├── 环境与依赖清单.txt            # 环境、库版本与用途
 └── requirements.txt
 ```
 
@@ -225,4 +223,14 @@ PyTorch  2.6.0+cu124       torchvision 0.21.0+cu124
 Gradio   6.30.0            onnxruntime 1.31.0
 ```
 
-完整的库版本与用途说明见 **`环境与依赖清单.txt`**，详细运行步骤与排错见 **`运行步骤.txt`**。
+完整的 78 个依赖包及精确版本见 `requirements.txt`。
+
+**几个容易踩的点**：
+
+- 不用单独装 CUDA Toolkit —— `torch==2.6.0+cu124` 里已经内置了 CUDA 12.4 运行时和 cuDNN
+- 首次运行会自动下载 ImageNet 预训练权重（ResNet18 约 45 MB、AlexNet 约 233 MB），
+  缓存在 `C:\Users\33432\.cache\torch\hub\checkpoints\`，之后不再下载
+- 没有显卡也能跑，脚本会自动回退到 CPU，代码不用改，只是慢几倍
+- 网页版必须通过 HTTP 服务访问（`python serve_web.py`），直接双击 `index.html` 用
+  `file://` 打开会被浏览器的安全策略拦住
+- 网页首次加载要下约 22 MB（模型 10.8 MB + 推理引擎 11 MB），之后走浏览器缓存
